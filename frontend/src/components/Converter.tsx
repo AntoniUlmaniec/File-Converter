@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import '../styles/converter.css'
+import logoImg from '../assets/logo.png'
+import animImg from '../assets/animation.gif'
 
 type FileObject = {
   fileName: string
@@ -95,8 +97,12 @@ export default function Converter() {
   return (
     <div className="converter-wrap">
       <header className="top-row">
-        <div className="logo-box">LOGO.PNG</div>
-        <div className="anim-box">ANIMATION.GIF</div>
+        <div className="logo-box">
+          <img src={logoImg} alt="logo" className="header-logo" />
+        </div>
+        <div className="anim-box">
+          <img src={animImg} alt="animation" style={{ maxWidth: 180 }} />
+        </div>
       </header>
 
       <main className="panel">
