@@ -1,85 +1,111 @@
 import React, { useState } from 'react';
-import axios from 'axios'; // Importujemy axios
+import axios from 'axios';
 import './App.css';
 
 function App() {
-  // Stany do przechowywania danych z formularza
-  const [files, setFiles] = useState(null); // Stan na pliki
-  const [targetFormat, setTargetFormat] = useState('mp4'); // Stan na format
-  const [message, setMessage] = useState(''); // Stan na odpowiedź z serwera
+  const [files, setFiles] = useState(null);
+  const [targetFormat, setTargetFormat] = useState('mp4'); // Domyślny format
+  const [message, setMessage] = useState('');
 
-  // Funkcja wywoływana przyciskiem "Konwertuj"
   const handleSubmit = async () => {
     if (!files || files.length === 0) {
       setMessage('Błąd: Nie wybrano plików!');
       return;
     }
 
-    setMessage('Wysyłanie...');
+    setMessage('Wysyłanie i konwertowanie...');
 
-    // 1. Tworzymy obiekt FormData (specjalny do wysyłania plików)
     const formData = new FormData();
-
-    // 2. Dodajemy wszystkie wybrane pliki
-    // Musimy użyć pętli, bo backend oczekuje tablicy @RequestParam("files")
     for (let i = 0; i < files.length; i++) {
       formData.append('files', files[i]);
     }
-
-    // 3. Dodajemy format docelowy
     formData.append('targetFormat', targetFormat);
 
-    // 4. Wysyłamy!
     try {
-      // WAŻNE: Adres musi pasować do twojego backendu (port 8080)
       const response = await axios.post('http://localhost:8080/api/convert', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data', // Mówimy serwerowi, że wysyłamy pliki
+          'Content-Type': 'multipart/form-data',
         },
+        responseType: 'blob',
       });
 
-      // Sukces! Wyświetlamy odpowiedź z serwera
-      setMessage(`Serwer odpowiedział: ${response.data}`);
+      const header = response.headers['content-disposition'];
+      const filename = header ? header.split('filename="')[1].replace('"', '') : 'converted_file';
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setMessage(`Sukces! Pobieranie pliku ${filename} rozpoczęte.`);
 
     } catch (error) {
-      // Porażka :(
+      if (error.response && error.response.data) {
+        try {
+          const errorText = await error.response.data.text();
+          setMessage(`Błąd serwera: ${errorText}`);
+        } catch (e) {
+          setMessage(`Błąd połączenia: ${error.message}`);
+        }
+      } else {
+        setMessage(`Błąd połączenia: ${error.message}`);
+      }
       console.error('Błąd podczas wysyłania:', error);
-      setMessage(`Błąd połączenia z backendem: ${error.message}`);
     }
   };
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>MediaFlex Konwerter</h1>
+        <h1>FileConverter</h1>
 
-        {/* 1. Komponent do wgrywania plików */}
         <div>
-          <label>1. Wgraj pliki (do 5):</label>
+          <label>1. Wgraj pliki (do 5, max 10MB):</label>
           <input
             type="file"
             multiple
-            onChange={(e) => setFiles(e.target.files)} // Zapisujemy pliki do stanu
+            onChange={(e) => setFiles(e.target.files)}
           />
         </div>
 
-        {/* 2. Komponent do wyboru formatu i wysyłki */}
         <div>
           <label>2. Wybierz format:</label>
           <select
             value={targetFormat}
-            onChange={(e) => setTargetFormat(e.target.value)} // Zapisujemy format do stanu
+            onChange={(e) => setTargetFormat(e.target.value)}
           >
-            <option value="mp4">mp4 (Wideo)</option>
-            <option value="mp3">mp3 (Audio)</option>
-            <option value="png">png (Obraz)</option>
+            {/* --- LISTA FORMATÓW --- */}
+            <optgroup label="Obraz">
+              <option value="jpg">jpg</option>
+              <option value="jpeg">jpeg</option>
+              <option value="png">png</option>
+              <option value="bmp">bmp</option>
+            </optgroup>
+            <optgroup label="Wideo">
+              <option value="mp4">mp4</option>
+              <option value="avi">avi</option>
+              <option value="mov">mov</option>
+              <option value="flv">flv</option>
+            </optgroup>
+            <optgroup label="Dźwięk">
+              <option value="mp3">mp3</option>
+              <option value="wav">wav</option>
+              <option value="3gg">3gg</option>
+              <option value="midi">midi</option>
+            </optgroup>
+            {/* --- LISTA FORMATÓW --- */}
           </select>
           <button onClick={handleSubmit}>OK (Konwertuj)</button>
         </div>
 
-        {/* 3. Miejsce na odpowiedź z serwera */}
         {message && (
-          <div style={{ marginTop: '20px', padding: '10px', background: 'white', color: 'black' }}>
+          <div style={{ marginTop: '20px', padding: '10px', background: 'white', color: 'black', borderRadius: '5px' }}>
             <h3>Status:</h3>
             <p>{message}</p>
           </div>
