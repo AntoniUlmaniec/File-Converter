@@ -27,7 +27,7 @@ public class ConversionService {
 
     // Kategoria 3: Audio
     private static final Set<String> AUDIO_MIMES = Set.of("audio/mpeg", "audio/wav", "audio/3gpp", "audio/midi", "audio/x-midi");
-    private static final Set<String> AUDIO_FORMATS = Set.of("mp3", "wav", "3gg", "midi");
+    private static final Set<String> AUDIO_FORMATS = Set.of("mp3", "wav", "3gp", "midi");
 
     // Suma wszystkich dozwolonych typów
     private static final Set<String> ALLOWED_MIME_TYPES = new HashSet<>();
@@ -118,12 +118,12 @@ public class ConversionService {
                 throw new ValidationException("Jeden z plików jest pusty.");
             }
             if (file.getSize() > MAX_FILE_SIZE) {
-                throw new ValidationException("Plik '" + file.getOriginalFilename() + "' jest za duży! (Limit: 10MB)");
+                throw new ValidationException("Jeden z plików jest za duży! (Limit: 10MB)");
             }
 
             String mimeType = file.getContentType();
             if (mimeType == null || !ALLOWED_MIME_TYPES.contains(mimeType)) {
-                throw new ValidationException("Format pliku '" + file.getOriginalFilename() + "' (" + mimeType + ") jest nieobsługiwany!");
+                throw new ValidationException("Format pliku (" + mimeType + ") jest nieobsługiwany!");
             }
 
             Category inputCategory = getCategoryForMime(mimeType);
@@ -139,7 +139,7 @@ public class ConversionService {
             }
 
             if (!isConversionAllowed) {
-                throw new ValidationException("Konwersja z " + inputCategory + " ('" + file.getOriginalFilename() + "') do " + targetCategory + " jest niedozwolona.");
+                throw new ValidationException("Konwersja z " + inputCategory + " do " + targetCategory + " jest niedozwolona.");
             }
         }
     }

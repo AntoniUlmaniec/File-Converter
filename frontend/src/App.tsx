@@ -1,19 +1,45 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import './App.css';
+import logo from './assets/logo.png';
+import animation from './assets/animation.gif';
+
+function Notification({ message, type }) {
+  if (!message) return null;
+  return (
+    <div className={`notification ${type}`}>
+      {message}
+    </div>
+  );
+}
 
 function App() {
   const [files, setFiles] = useState(null);
-  const [targetFormat, setTargetFormat] = useState('mp4'); // Domyślny format
-  const [message, setMessage] = useState('');
+  const [targetFormat, setTargetFormat] = useState('mp4');
+  const [isConverting, setIsConverting] = useState(false);
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => {
+      setNotification(null);
+    }, 4000);
+  };
+
+  const getFileNames = () => {
+    if (!files) return "Nie wybrano plików";
+    // Bierzemy wszystkie nazwy i łączymy je przecinkiem
+    return Array.from(files).map(file => file.name).join(', ');
+  };
 
   const handleSubmit = async () => {
     if (!files || files.length === 0) {
-      setMessage('Błąd: Nie wybrano plików!');
+      showNotification('Błąd: Nie wybrano plików!', 'error');
       return;
     }
 
-    setMessage('Wysyłanie i konwertowanie...');
+    setIsConverting(true);
+    setNotification(null);
 
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
@@ -23,9 +49,7 @@ function App() {
 
     try {
       const response = await axios.post('http://localhost:8080/api/convert', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
         responseType: 'blob',
       });
 
@@ -36,82 +60,112 @@ function App() {
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);
-
       document.body.appendChild(link);
       link.click();
-
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      setMessage(`Sukces! Pobieranie pliku ${filename} rozpoczęte.`);
+      showNotification('Sukces! Konwersja zakończona, pobieranie rozpoczęte.', 'success');
 
     } catch (error) {
       if (error.response && error.response.data) {
         try {
           const errorText = await error.response.data.text();
-          setMessage(`Błąd serwera: ${errorText}`);
+          showNotification(`Błąd serwera: ${errorText}`, 'error');
         } catch (e) {
-          setMessage(`Błąd połączenia: ${error.message}`);
+          showNotification(`Błąd połączenia: ${error.message}`, 'error');
         }
       } else {
-        setMessage(`Błąd połączenia: ${error.message}`);
+        showNotification(`Błąd połączenia: ${error.message}`);
       }
       console.error('Błąd podczas wysyłania:', error);
+    } finally {
+      setIsConverting(false);
     }
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>FileConverter</h1>
+    <>
+      <Notification
+        message={notification?.message}
+        type={notification?.type}
+      />
 
-        <div>
-          <label>1. Wgraj pliki (do 5, max 10MB):</label>
-          <input
-            type="file"
-            multiple
-            onChange={(e) => setFiles(e.target.files)}
-          />
-        </div>
+      <div className="container">
 
-        <div>
-          <label>2. Wybierz format:</label>
-          <select
-            value={targetFormat}
-            onChange={(e) => setTargetFormat(e.target.value)}
-          >
-            {/* --- LISTA FORMATÓW --- */}
-            <optgroup label="Obraz">
-              <option value="jpg">jpg</option>
-              <option value="jpeg">jpeg</option>
-              <option value="png">png</option>
-              <option value="bmp">bmp</option>
-            </optgroup>
-            <optgroup label="Wideo">
-              <option value="mp4">mp4</option>
-              <option value="avi">avi</option>
-              <option value="mov">mov</option>
-              <option value="flv">flv</option>
-            </optgroup>
-            <optgroup label="Dźwięk">
-              <option value="mp3">mp3</option>
-              <option value="wav">wav</option>
-              <option value="3gg">3gg</option>
-              <option value="midi">midi</option>
-            </optgroup>
-            {/* --- LISTA FORMATÓW --- */}
-          </select>
-          <button onClick={handleSubmit}>OK (Konwertuj)</button>
-        </div>
-
-        {message && (
-          <div style={{ marginTop: '20px', padding: '10px', background: 'white', color: 'black', borderRadius: '5px' }}>
-            <h3>Status:</h3>
-            <p>{message}</p>
+        <header className="header">
+          <div className="logo-container">
+            <img src={logo} alt="Logo" className="logo" />
           </div>
-        )}
-      </header>
-    </div>
+          <div className="animation-container">
+            <img src={animation} alt="Animacja" className="animation" />
+          </div>
+        </header>
+
+        <main className="main-content">
+          <h1>FileConverter</h1>
+
+          <div className="converter-controls">
+
+            <div className="control-row">
+              <span className="label">UPLOAD</span>
+
+              <label htmlFor="upload-input" className="file-input-label">
+                Wybierz pliki
+              </label>
+
+              <input
+                id="upload-input"
+                className="file-input-hidden"
+                type="file"
+                multiple
+                onChange={(e) => setFiles(e.target.files)}
+              />
+              <span className="file-names">{getFileNames()}</span>
+            </div>
+
+            <div className="control-row">
+              <span className="label">CONVERT TO</span>
+              <select
+                id="convert-select"
+                className="convert-select"
+                value={targetFormat}
+                onChange={(e) => setTargetFormat(e.target.value)}
+              >
+                <optgroup label="Obraz">
+                  <option value="jpg">jpg</option><option value="jpeg">jpeg</option><option value="png">png</option><option value="bmp">bmp</option>
+                </optgroup>
+                <optgroup label="Wideo">
+                  <option value="mp4">mp4</option><option value="avi">avi</option><option value="mov">mov</option><option value="flv">flv</option>
+                </optgroup>
+                <optgroup label="Dźwięk">
+                  <option value="mp3">mp3</option><option value="wav">wav</option><option value="3gp">3gp</option><option value="midi">midi</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={isConverting}
+              className="submit-button"
+            >
+              {isConverting ? 'PRZETWARZANIE...' : 'OK'}
+            </button>
+          </div>
+
+          {isConverting && (
+            <div className="progress-bar-container">
+              <div className="progress-bar"></div>
+              <span>Przetwarzanie...</span>
+            </div>
+          )}
+        </main>
+
+        <footer className="footer">
+          MIEJSCE NA TWÓJ BANER REKLAMOWY!!! TEL: 555 666 777
+        </footer>
+      </div>
+    </>
   );
 }
 
